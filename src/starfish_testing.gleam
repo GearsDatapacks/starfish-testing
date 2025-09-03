@@ -22,72 +22,95 @@ pub fn main() -> Nil {
     |> result.map(string.split(_, "\n"))
     as "Failed to read game file"
 
-  io.println("Loaded games. Running game 0...")
+  io.println("Loaded games.")
 
-  let outcomes =
-    list.index_map(games, fn(game, i) {
-      let outcome = run_game(game)
-      io.println(
-        "Finished game "
-        <> int.to_string(i)
-        <> ", outcome "
-        <> string.inspect(outcome),
-      )
-      io.println("Running game " <> int.to_string(i + 1) <> "...")
-      outcome
-    })
+  let outcomes = list.index_map(games, run_game) |> list.flatten
 
   let #(wins, draws, losses) =
     list.fold(outcomes, #(0, 0, 0), fn(tuple, outcome) {
       let #(wins, draws, losses) = tuple
       case outcome {
-        White -> #(wins + 1, draws, losses)
+        Updated -> #(wins + 1, draws, losses)
         Draw -> #(wins, draws + 1, losses)
-        Black -> #(wins, draws, losses + 1)
+        Original -> #(wins, draws, losses + 1)
       }
     })
 
   io.println(
-    "Wins: "
+    "Updated version won "
     <> int.to_string(wins)
-    <> "\nDraws: "
+    <> " times.\nThe bots drew "
     <> int.to_string(draws)
-    <> "\nLosses: "
-    <> int.to_string(losses),
+    <> " times.\nOriginal version won "
+    <> int.to_string(losses)
+    <> " times.",
   )
 
   Nil
 }
 
 type Outcome {
-  White
-  Black
+  Updated
+  Original
   Draw
 }
 
-fn run_game(fen: String) -> Outcome {
+fn run_game(fen: String, i: Int) -> List(Outcome) {
   let assert Ok(game) = starfish.try_from_fen(fen)
     as "Failed to parse fen string"
-  run_game_loop(game)
+
+  io.println("Running match " <> int.to_string(i) <> ", position " <> fen)
+
+  let first_outcome = run_game_loop(game, UpdatedPlaysWhite)
+
+  io.println("Finished first game of match, " <> print_outcome(first_outcome))
+
+  io.println("Running again with reversed colours...")
+
+  let second_outcome = run_game_loop(game, UpdatedPlaysBlack)
+
+  io.println("Finished second game of match, " <> print_outcome(second_outcome))
+
+  [first_outcome, second_outcome]
 }
 
-fn run_game_loop(game: starfish.Game) -> Outcome {
-  case starfish.state(game) {
-    starfish.BlackWin -> Black
-    starfish.Draw(_) -> Draw
-    starfish.WhiteWin -> White
-    starfish.Continue -> {
-      let best_move = get_best_move(game)
+fn print_outcome(outcome: Outcome) -> String {
+  case outcome {
+    Draw -> "it was a draw."
+    Original -> "original version won."
+    Updated -> "updated version won."
+  }
+}
 
-      run_game_loop(starfish.apply_move(game, best_move))
+type Configuration {
+  UpdatedPlaysWhite
+  UpdatedPlaysBlack
+}
+
+fn run_game_loop(game: starfish.Game, configuration: Configuration) -> Outcome {
+  case starfish.state(game), configuration {
+    starfish.Draw(_), _ -> Draw
+    starfish.BlackWin, UpdatedPlaysBlack | starfish.WhiteWin, UpdatedPlaysWhite ->
+      Updated
+    starfish.BlackWin, UpdatedPlaysWhite | starfish.WhiteWin, UpdatedPlaysBlack ->
+      Original
+    starfish.Continue, _ -> {
+      let best_move = get_best_move(game, configuration)
+
+      run_game_loop(starfish.apply_move(game, best_move), configuration)
     }
   }
 }
 
-fn get_best_move(game: starfish.Game) -> Move(Legal) {
-  let url = case game.to_move {
-    board.White -> "http://0.0.0.0:8000/move"
-    board.Black -> "http://0.0.0.0:8001/move"
+fn get_best_move(
+  game: starfish.Game,
+  configuration: Configuration,
+) -> Move(Legal) {
+  let url = case game.to_move, configuration {
+    board.White, UpdatedPlaysWhite | board.Black, UpdatedPlaysBlack ->
+      "http://0.0.0.0:8000/move"
+    board.Black, UpdatedPlaysWhite | board.White, UpdatedPlaysBlack ->
+      "http://0.0.0.0:8001/move"
   }
 
   let assert Ok(request) = request.to(url)
