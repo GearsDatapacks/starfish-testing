@@ -4,7 +4,6 @@ import gleam/httpc
 import gleam/int
 import gleam/io
 import gleam/list
-import gleam/result
 import gleam/string
 import simplifile as file
 import starfish
@@ -19,8 +18,13 @@ pub fn main() -> Nil {
   let assert Ok(games) =
     fen_file
     |> file.read
-    |> result.map(string.split(_, "\n"))
     as "Failed to read game file"
+
+  let games =
+    games
+    |> string.split("\n")
+    // Use `#` for comments in the file
+    |> list.filter(fn(game) { game != "" && !string.starts_with(game, "#") })
 
   io.println("Loaded games.")
 
