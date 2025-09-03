@@ -6,9 +6,8 @@ import gleam/io
 import gleam/list
 import gleam/string
 import simplifile as file
-import starfish
+import starfish.{type Move}
 import starfish/internal/board
-import starfish/internal/move.{type Legal, type Move}
 
 const fen_file = "silversuite.fen"
 
@@ -106,10 +105,7 @@ fn run_game_loop(game: starfish.Game, configuration: Configuration) -> Outcome {
   }
 }
 
-fn get_best_move(
-  game: starfish.Game,
-  configuration: Configuration,
-) -> Move(Legal) {
+fn get_best_move(game: starfish.Game, configuration: Configuration) -> Move {
   let url = case game.to_move, configuration {
     board.White, UpdatedPlaysWhite | board.Black, UpdatedPlaysBlack ->
       "http://0.0.0.0:8000/move"
@@ -124,16 +120,7 @@ fn get_best_move(
     |> request.set_method(http.Post)
   let assert Ok(response) = httpc.send(request)
 
-  let assert Ok(move) = starfish.parse_long_algebraic_notation(response.body)
-  coerce_move(move)
-}
-
-fn coerce_move(move: Move(move.Valid)) -> Move(Legal) {
-  case move {
-    move.Capture(from:, to:) -> move.Capture(from:, to:)
-    move.Castle(from:, to:) -> move.Castle(from:, to:)
-    move.EnPassant(from:, to:) -> move.EnPassant(from:, to:)
-    move.Move(from:, to:) -> move.Move(from:, to:)
-    move.Promotion(from:, to:, piece:) -> move.Promotion(from:, to:, piece:)
-  }
+  let assert Ok(move) =
+    starfish.parse_long_algebraic_notation(response.body, game)
+  move
 }
