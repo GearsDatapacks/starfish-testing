@@ -14,11 +14,15 @@ import starfish/internal/move.{type Legal, type Move}
 const fen_file = "silversuite.fen"
 
 pub fn main() -> Nil {
+  io.println("Loading games from file...")
+
   let assert Ok(games) =
     fen_file
     |> file.read
     |> result.map(string.split(_, "\n"))
     as "Failed to read game file"
+
+  io.println("Loaded games. Running game 0...")
 
   let outcomes =
     list.index_map(games, fn(game, i) {
@@ -29,6 +33,7 @@ pub fn main() -> Nil {
         <> ", outcome "
         <> string.inspect(outcome),
       )
+      io.println("Running game " <> int.to_string(i + 1) <> "...")
       outcome
     })
 
