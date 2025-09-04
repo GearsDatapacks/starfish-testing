@@ -29,7 +29,8 @@ fn handle_request(request: Request) -> Response {
 fn handle_move(request: Request) -> Response {
   use fen <- wisp.require_string_body(request)
   let game = starfish.from_fen(fen)
-  let move_result = starfish.search(game, to_depth: 4)
+  let move_result =
+    starfish.search(game, until: starfish.Time(milliseconds: 1000))
   case move_result {
     Ok(move) ->
       wisp.ok()
