@@ -34,7 +34,7 @@ pub fn main() -> Nil {
       let #(wins, draws, losses) = tuple
       case outcome {
         Updated -> #(wins + 1, draws, losses)
-        Draw -> #(wins, draws + 1, losses)
+        Draw(_) -> #(wins, draws + 1, losses)
         Original -> #(wins, draws, losses + 1)
       }
     })
@@ -55,7 +55,7 @@ pub fn main() -> Nil {
 type Outcome {
   Updated
   Original
-  Draw
+  Draw(starfish.DrawReason)
 }
 
 fn run_game(fen: String, i: Int) -> List(Outcome) {
@@ -79,9 +79,12 @@ fn run_game(fen: String, i: Int) -> List(Outcome) {
 
 fn print_outcome(outcome: Outcome) -> String {
   case outcome {
-    Draw -> "it was a draw."
     Original -> "original version won."
     Updated -> "updated version won."
+    Draw(starfish.FiftyMoves) -> "fifty quiet moves occurred"
+    Draw(starfish.InsufficientMaterial) -> "there was insufficient material"
+    Draw(starfish.Stalemate) -> "it was stalemate"
+    Draw(starfish.ThreefoldRepetition) -> "the position was repeated 3 times"
   }
 }
 
@@ -92,7 +95,7 @@ type Configuration {
 
 fn run_game_loop(game: starfish.Game, configuration: Configuration) -> Outcome {
   case starfish.state(game), configuration {
-    starfish.Draw(_), _ -> Draw
+    starfish.Draw(reason), _ -> Draw(reason)
     starfish.BlackWin, UpdatedPlaysBlack | starfish.WhiteWin, UpdatedPlaysWhite ->
       Updated
     starfish.BlackWin, UpdatedPlaysWhite | starfish.WhiteWin, UpdatedPlaysBlack ->
@@ -120,7 +123,6 @@ fn get_best_move(game: starfish.Game, configuration: Configuration) -> Move {
     |> request.set_method(http.Post)
   let assert Ok(response) = httpc.send(request)
 
-  let assert Ok(move) =
-    starfish.parse_long_algebraic_notation(response.body, game)
+  let assert Ok(move) = starfish.parse_move(response.body, game)
   move
 }
