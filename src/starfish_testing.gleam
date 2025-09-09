@@ -62,13 +62,17 @@ fn run_game(fen: String, i: Int) -> List(Outcome) {
   let assert Ok(game) = starfish.try_from_fen(fen)
     as "Failed to parse fen string"
 
-  io.println("Running match " <> int.to_string(i) <> ", position " <> fen)
+  io.println("Running match " <> int.to_string(i + 1) <> ", position " <> fen)
+
+  update_fen(fen)
 
   let first_outcome = run_game_loop(game, UpdatedPlaysWhite)
 
   io.println("Finished first game of match, " <> print_outcome(first_outcome))
 
   io.println("Running again with reversed colours...")
+
+  update_fen(fen)
 
   let second_outcome = run_game_loop(game, UpdatedPlaysBlack)
 
@@ -108,21 +112,56 @@ fn run_game_loop(game: starfish.Game, configuration: Configuration) -> Outcome {
   }
 }
 
+fn update_fen(fen: String) -> Nil {
+  let assert Ok(original_req) = request.to(original_url <> "/fen")
+
+  let assert Ok(response) =
+    httpc.send(
+      original_req |> request.set_body(fen) |> request.set_method(http.Post),
+    )
+  assert response.status == 200
+
+  let assert Ok(updated_req) = request.to(updated_url <> "/fen")
+
+  let assert Ok(response) =
+    httpc.send(
+      updated_req |> request.set_body(fen) |> request.set_method(http.Post),
+    )
+  assert response.status == 200
+
+  Nil
+}
+
+const updated_url = "http://0.0.0.0:8000"
+
+const original_url = "http://0.0.0.0:8001"
+
 fn get_best_move(game: starfish.Game, configuration: Configuration) -> Move {
-  let url = case game.to_move, configuration {
-    board.White, UpdatedPlaysWhite | board.Black, UpdatedPlaysBlack ->
-      "http://0.0.0.0:8000/move"
-    board.Black, UpdatedPlaysWhite | board.White, UpdatedPlaysBlack ->
-      "http://0.0.0.0:8001/move"
+  let #(url, opposing_url) = case game.to_move, configuration {
+    board.White, UpdatedPlaysWhite | board.Black, UpdatedPlaysBlack -> #(
+      updated_url,
+      original_url,
+    )
+    board.Black, UpdatedPlaysWhite | board.White, UpdatedPlaysBlack -> #(
+      original_url,
+      updated_url,
+    )
   }
 
-  let assert Ok(request) = request.to(url)
-  let request =
-    request
-    |> request.set_body(starfish.to_fen(game))
-    |> request.set_method(http.Post)
+  let assert Ok(request) = request.to(url <> "/get_move")
   let assert Ok(response) = httpc.send(request)
+  assert response.status == 200
 
   let assert Ok(move) = starfish.parse_move(response.body, game)
+
+  let assert Ok(request) = request.to(opposing_url <> "/move")
+  let assert Ok(response) =
+    httpc.send(
+      request
+      |> request.set_body(response.body)
+      |> request.set_method(http.Post),
+    )
+  assert response.status == 200
+
   move
 }

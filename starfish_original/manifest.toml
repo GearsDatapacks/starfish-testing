@@ -27,13 +27,14 @@ packages = [
   { name = "platform", version = "1.0.0", build_tools = ["gleam"], requirements = [], otp_app = "platform", source = "hex", outer_checksum = "8339420A95AD89AAC0F82F4C3DB8DD401041742D6C3F46132A8739F6AEB75391" },
   { name = "ranger", version = "1.4.0", build_tools = ["gleam"], requirements = ["gleam_stdlib", "gleam_yielder"], otp_app = "ranger", source = "hex", outer_checksum = "C8988E8F8CDBD3E7F4D8F2E663EF76490390899C2B2885A6432E942495B3E854" },
   { name = "simplifile", version = "2.3.0", build_tools = ["gleam"], requirements = ["filepath", "gleam_stdlib"], otp_app = "simplifile", source = "hex", outer_checksum = "0A868DAC6063D9E983477981839810DC2E553285AB4588B87E3E9C96A7FB4CB4" },
-  { name = "starfish", version = "1.0.0", build_tools = ["gleam"], requirements = ["birl", "gleam_stdlib", "iv"], source = "git", repo = "https://github.com/GearsDatapacks/starfish", commit = "2fe02ea19edac4d5b968369acf97252b35151095" },
+  { name = "starfish", version = "1.0.0", build_tools = ["gleam"], requirements = ["birl", "gleam_stdlib", "iv"], source = "git", repo = "https://github.com/GearsDatapacks/starfish", commit = "90ae6d7feab65ee578c22adaa19f1c3151011db4" },
   { name = "telemetry", version = "1.3.0", build_tools = ["rebar3"], requirements = [], otp_app = "telemetry", source = "hex", outer_checksum = "7015FC8919DBE63764F4B4B87A95B7C0996BD539E0D499BE6EC9D7F3875B79E6" },
   { name = "wisp", version = "2.0.0", build_tools = ["gleam"], requirements = ["directories", "exception", "filepath", "gleam_crypto", "gleam_erlang", "gleam_http", "gleam_json", "gleam_stdlib", "houdini", "logging", "marceau", "mist", "simplifile"], otp_app = "wisp", source = "hex", outer_checksum = "E9E4CEE4A5ACB41E3D9CFEF7AB07BF7DF670AB32E1CB434A61C6DA6859C66168" },
 ]
 
 [requirements]
 gleam_erlang = { version = ">= 1.3.0 and < 2.0.0" }
+gleam_otp = { version = ">= 1.1.0 and < 2.0.0" }
 gleam_stdlib = { version = ">= 0.44.0 and < 2.0.0" }
 gleeunit = { version = ">= 1.0.0 and < 2.0.0" }
 mist = { version = ">= 5.0.3 and < 6.0.0" }
