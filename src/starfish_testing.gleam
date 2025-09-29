@@ -7,7 +7,11 @@ import gleam/list
 import gleam/string
 import simplifile as file
 import starfish.{type Move}
-import starfish/internal/board
+
+type ToMove {
+  UpdatedToMove
+  OriginalToMove
+}
 
 const fen_file = "silversuite.fen"
 
@@ -66,7 +70,7 @@ fn run_game(fen: String, i: Int) -> List(Outcome) {
 
   update_fen(fen)
 
-  let first_outcome = run_game_loop(game, UpdatedPlaysWhite)
+  let first_outcome = run_game_loop(game, UpdatedToMove, UpdatedPlaysWhite)
 
   io.println("Finished first game of match, " <> print_outcome(first_outcome))
 
@@ -74,7 +78,7 @@ fn run_game(fen: String, i: Int) -> List(Outcome) {
 
   update_fen(fen)
 
-  let second_outcome = run_game_loop(game, UpdatedPlaysBlack)
+  let second_outcome = run_game_loop(game, OriginalToMove, UpdatedPlaysBlack)
 
   io.println("Finished second game of match, " <> print_outcome(second_outcome))
 
@@ -97,7 +101,11 @@ type Configuration {
   UpdatedPlaysBlack
 }
 
-fn run_game_loop(game: starfish.Game, configuration: Configuration) -> Outcome {
+fn run_game_loop(
+  game: starfish.Game,
+  to_move: ToMove,
+  configuration: Configuration,
+) -> Outcome {
   case starfish.state(game), configuration {
     starfish.Draw(reason), _ -> Draw(reason)
     starfish.BlackWin, UpdatedPlaysBlack | starfish.WhiteWin, UpdatedPlaysWhite ->
@@ -105,9 +113,18 @@ fn run_game_loop(game: starfish.Game, configuration: Configuration) -> Outcome {
     starfish.BlackWin, UpdatedPlaysWhite | starfish.WhiteWin, UpdatedPlaysBlack ->
       Original
     starfish.Continue, _ -> {
-      let best_move = get_best_move(game, configuration)
+      let best_move = get_best_move(game, to_move)
 
-      run_game_loop(starfish.apply_move(game, best_move), configuration)
+      let to_move = case to_move {
+        OriginalToMove -> UpdatedToMove
+        UpdatedToMove -> OriginalToMove
+      }
+
+      run_game_loop(
+        starfish.apply_move(game, best_move),
+        to_move,
+        configuration,
+      )
     }
   }
 }
@@ -136,16 +153,10 @@ const updated_url = "http://0.0.0.0:8000"
 
 const original_url = "http://0.0.0.0:8001"
 
-fn get_best_move(game: starfish.Game, configuration: Configuration) -> Move {
-  let #(url, opposing_url) = case game.to_move, configuration {
-    board.White, UpdatedPlaysWhite | board.Black, UpdatedPlaysBlack -> #(
-      updated_url,
-      original_url,
-    )
-    board.Black, UpdatedPlaysWhite | board.White, UpdatedPlaysBlack -> #(
-      original_url,
-      updated_url,
-    )
+fn get_best_move(game: starfish.Game, to_move: ToMove) -> Move {
+  let #(url, opposing_url) = case to_move {
+    UpdatedToMove -> #(updated_url, original_url)
+    OriginalToMove -> #(original_url, updated_url)
   }
 
   let assert Ok(request) = request.to(url <> "/get_move")
